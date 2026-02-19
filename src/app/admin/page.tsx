@@ -58,6 +58,21 @@ export default function AdminDashboard() {
     couponValue: 10,
     maxWins: null as number | null,
   })
+  
+  // Spin history
+  const [spins, setSpins] = useState<{
+    id: string
+    phone: string
+    prizeName: string
+    prizeColor: string
+    couponCode: string
+    redeemed: boolean
+    redeemedAt: string | null
+    createdAt: string
+    ipAddress: string | null
+  }[]>([])
+  const [spinsTotal, setSpinsTotal] = useState(0)
+  const [spinsLoading, setSpinsLoading] = useState(false)
 
   useEffect(() => {
     loadCampaigns()
@@ -68,6 +83,7 @@ export default function AdminDashboard() {
       loadPrizes(selectedCampaign)
       loadStats(selectedCampaign)
       loadPhones(selectedCampaign)
+      loadSpins(selectedCampaign)
     }
   }, [selectedCampaign])
 
@@ -80,6 +96,45 @@ export default function AdminDashboard() {
     } catch (e) {
       console.error(e)
     }
+  }
+
+  async function loadSpins(campaignId: string) {
+    setSpinsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/campaigns/${campaignId}/spins?limit=100`)
+      const data = await res.json()
+      setSpins(data.spins || [])
+      setSpinsTotal(data.total || 0)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSpinsLoading(false)
+    }
+  }
+
+  async function exportSpinsCSV() {
+    if (!selectedCampaign) return
+    const res = await fetch(`/api/admin/campaigns/${selectedCampaign}/spins?limit=10000`)
+    const data = await res.json()
+    const rows = [
+      ['Date', 'Phone', 'Prize', 'Coupon Code', 'Redeemed', 'Redeemed At', 'IP Address'].join(','),
+      ...data.spins.map((s: typeof spins[0]) => [
+        new Date(s.createdAt).toISOString(),
+        s.phone,
+        s.prizeName,
+        s.couponCode,
+        s.redeemed ? 'Yes' : 'No',
+        s.redeemedAt ? new Date(s.redeemedAt).toISOString() : '',
+        s.ipAddress || ''
+      ].join(','))
+    ]
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `spins-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   async function addSinglePhone() {
@@ -306,6 +361,92 @@ export default function AdminDashboard() {
         {/* Prizes Tab */}
         {activeTab === 'prizes' && (
           <div className="space-y-6">
+            {/* Edit Prize Modal */}
+            {editingPrize && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-700 w-full max-w-md">
+                  <h3 className="font-semibold text-lg mb-4">Edit Prize</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={editingPrize.name}
+                        onChange={e => setEditingPrize({ ...editingPrize, name: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Weight</label>
+                        <input
+                          type="number"
+                          value={editingPrize.weight}
+                          onChange={e => setEditingPrize({ ...editingPrize, weight: parseInt(e.target.value) || 0 })}
+                          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Color</label>
+                        <input
+                          type="color"
+                          value={editingPrize.color}
+                          onChange={e => setEditingPrize({ ...editingPrize, color: e.target.value })}
+                          className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Coupon Type</label>
+                        <select
+                          value={editingPrize.couponType}
+                          onChange={e => setEditingPrize({ ...editingPrize, couponType: e.target.value })}
+                          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                        >
+                          <option value="percent_off">% Off</option>
+                          <option value="fixed_amount">$ Off</option>
+                          <option value="free_shipping">Free Shipping</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Coupon Value</label>
+                        <input
+                          type="number"
+                          value={editingPrize.couponValue || ''}
+                          onChange={e => setEditingPrize({ ...editingPrize, couponValue: e.target.value ? parseInt(e.target.value) : null })}
+                          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Max Wins (blank = unlimited)</label>
+                      <input
+                        type="number"
+                        value={editingPrize.maxWins || ''}
+                        onChange={e => setEditingPrize({ ...editingPrize, maxWins: e.target.value ? parseInt(e.target.value) : null })}
+                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => setEditingPrize(null)}
+                      className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => updatePrize(editingPrize)}
+                      className="px-4 py-2 bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Add Prize Form */}
             <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
               <h3 className="font-semibold mb-4">Add New Prize</h3>
@@ -388,6 +529,12 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditingPrize(prize)}
+                            className="px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded"
+                          >
+                            Edit
+                          </button>
                           <button
                             onClick={() => updatePrize({ ...prize, active: !prize.active })}
                             className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded"
@@ -527,14 +674,75 @@ export default function AdminDashboard() {
 
         {/* Spins Tab */}
         {activeTab === 'spins' && (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold">Recent Spins</h3>
-              <button className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm">
+          <div className="bg-gray-900 rounded-xl border border-gray-800">
+            <div className="px-5 py-4 border-b border-gray-800 flex justify-between items-center">
+              <h3 className="font-semibold">
+                Spin History ({spinsTotal})
+              </h3>
+              <button 
+                onClick={exportSpinsCSV}
+                className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm"
+              >
                 📥 Export CSV
               </button>
             </div>
-            <p className="text-gray-400">Spin history will appear here...</p>
+            
+            {spinsLoading ? (
+              <div className="p-8 text-center text-gray-400">Loading...</div>
+            ) : spins.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">
+                No spins yet. Share your wheel link to start collecting entries!
+              </div>
+            ) : (
+              <div className="max-h-[600px] overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-800/50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Phone</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Prize</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Coupon</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Status</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {spins.map(spin => (
+                      <tr key={spin.id} className="border-t border-gray-800 hover:bg-gray-800/50">
+                        <td className="px-4 py-3 text-sm text-gray-400">
+                          {new Date(spin.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-sm">{spin.phone}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: spin.prizeColor }}
+                            />
+                            <span>{spin.prizeName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-sm text-emerald-400">
+                          {spin.couponCode}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            spin.redeemed 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {spin.redeemed ? 'Redeemed' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500 font-mono">
+                          {spin.ipAddress || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
