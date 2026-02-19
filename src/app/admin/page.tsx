@@ -14,6 +14,10 @@ interface Campaign {
   scheduleEnd: string | null
   timezone: string
   requireWhitelist: boolean
+  activeTitle: string | null
+  activeSubtitle: string | null
+  inactiveTitle: string | null
+  inactiveMessage: string | null
   _count: { spins: number }
 }
 
@@ -52,7 +56,20 @@ export default function AdminDashboard() {
     scheduleEnd: string
     timezone: string
     requireWhitelist: boolean
-  }>({ scheduleStart: '', scheduleEnd: '', timezone: 'America/New_York', requireWhitelist: true })
+    activeTitle: string
+    activeSubtitle: string
+    inactiveTitle: string
+    inactiveMessage: string
+  }>({ 
+    scheduleStart: '', 
+    scheduleEnd: '', 
+    timezone: 'America/New_York', 
+    requireWhitelist: true,
+    activeTitle: '',
+    activeSubtitle: '',
+    inactiveTitle: '',
+    inactiveMessage: ''
+  })
   const [savingSettings, setSavingSettings] = useState(false)
   
   // Phone whitelist
@@ -245,7 +262,11 @@ export default function AdminDashboard() {
         scheduleStart: campaign.scheduleStart || '',
         scheduleEnd: campaign.scheduleEnd || '',
         timezone: campaign.timezone || 'America/New_York',
-        requireWhitelist: campaign.requireWhitelist ?? true
+        requireWhitelist: campaign.requireWhitelist ?? true,
+        activeTitle: campaign.activeTitle || '',
+        activeSubtitle: campaign.activeSubtitle || '',
+        inactiveTitle: campaign.inactiveTitle || '',
+        inactiveMessage: campaign.inactiveMessage || ''
       })
     }
   }
@@ -261,7 +282,11 @@ export default function AdminDashboard() {
           scheduleStart: campaignSettings.scheduleStart || null,
           scheduleEnd: campaignSettings.scheduleEnd || null,
           timezone: campaignSettings.timezone,
-          requireWhitelist: campaignSettings.requireWhitelist
+          requireWhitelist: campaignSettings.requireWhitelist,
+          activeTitle: campaignSettings.activeTitle || null,
+          activeSubtitle: campaignSettings.activeSubtitle || null,
+          inactiveTitle: campaignSettings.inactiveTitle || null,
+          inactiveMessage: campaignSettings.inactiveMessage || null
         })
       })
       await loadCampaigns()
@@ -876,6 +901,68 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-400">Only whitelisted phone numbers can spin the wheel</p>
                 </div>
               </label>
+            </div>
+
+            {/* Active Page Text */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h3 className="font-semibold text-lg mb-4">✨ Active Page Text</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Customize the text shown when the wheel is available.
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={campaignSettings.activeTitle}
+                    onChange={e => setCampaignSettings({ ...campaignSettings, activeTitle: e.target.value })}
+                    placeholder="🎁 SPIN TO WIN!"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Subtitle</label>
+                  <input
+                    type="text"
+                    value={campaignSettings.activeSubtitle}
+                    onChange={e => setCampaignSettings({ ...campaignSettings, activeSubtitle: e.target.value })}
+                    placeholder="Gateway Market Exclusive Rewards"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Inactive Page Text */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h3 className="font-semibold text-lg mb-4">🚫 Inactive Page Text</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Customize the text shown outside scheduled hours.
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={campaignSettings.inactiveTitle}
+                    onChange={e => setCampaignSettings({ ...campaignSettings, inactiveTitle: e.target.value })}
+                    placeholder="This promotion has expired"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Message</label>
+                  <textarea
+                    value={campaignSettings.inactiveMessage}
+                    onChange={e => setCampaignSettings({ ...campaignSettings, inactiveMessage: e.target.value })}
+                    placeholder="Visit Gateway.Market to take advantage of our daily bouncebacks."
+                    rows={3}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Save Button */}

@@ -36,7 +36,11 @@ export async function GET() {
       campaign: {
         id: campaign.id,
         name: campaign.name,
-        redirectUrl: campaign.redirectUrl
+        redirectUrl: campaign.redirectUrl,
+        activeTitle: campaign.activeTitle,
+        activeSubtitle: campaign.activeSubtitle,
+        inactiveTitle: campaign.inactiveTitle,
+        inactiveMessage: campaign.inactiveMessage
       },
       prizes: campaign.prizes.map(p => ({
         id: p.id,

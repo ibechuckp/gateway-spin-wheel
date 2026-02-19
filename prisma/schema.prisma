@@ -18,6 +18,12 @@ model Campaign {
   scheduleStart String?   // Time of day promo starts (HH:MM, e.g. "10:00")
   scheduleEnd   String?   // Time of day promo ends (HH:MM, e.g. "22:00") 
   timezone      String    @default("America/New_York")
+  // Custom text for active page
+  activeTitle    String?  // e.g. "🎁 SPIN TO WIN!"
+  activeSubtitle String?  // e.g. "Gateway Market Exclusive Rewards"
+  // Custom text for inactive/expired page  
+  inactiveTitle   String?  // e.g. "This promotion has expired"
+  inactiveMessage String?  // e.g. "Visit Gateway.Market for daily bouncebacks..."
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   

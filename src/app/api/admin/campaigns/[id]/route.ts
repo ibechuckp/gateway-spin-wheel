@@ -38,7 +38,8 @@ export async function PATCH(
     // Only allow updating specific fields
     const allowedFields = [
       'name', 'active', 'redirectUrl', 'expirationDate',
-      'scheduleStart', 'scheduleEnd', 'timezone', 'requireWhitelist'
+      'scheduleStart', 'scheduleEnd', 'timezone', 'requireWhitelist',
+      'activeTitle', 'activeSubtitle', 'inactiveTitle', 'inactiveMessage'
     ]
     
     const updateData: Record<string, unknown> = {}

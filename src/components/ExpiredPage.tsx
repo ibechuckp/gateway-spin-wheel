@@ -5,9 +5,14 @@ import Image from 'next/image'
 
 interface ExpiredPageProps {
   nextAvailable?: string | null
+  title?: string | null
+  message?: string | null
 }
 
-export default function ExpiredPage({ nextAvailable }: ExpiredPageProps) {
+export default function ExpiredPage({ nextAvailable, title, message }: ExpiredPageProps) {
+  const displayTitle = title || 'This promotion has expired'
+  const displayMessage = message || 'Visit Gateway.Market to take advantage of our daily bouncebacks.'
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-950 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
@@ -15,19 +20,11 @@ export default function ExpiredPage({ nextAvailable }: ExpiredPageProps) {
         <div className="text-6xl mb-6">⏰</div>
         
         <h1 className="text-3xl font-bold text-white mb-4">
-          This promotion has expired
+          {displayTitle}
         </h1>
         
         <p className="text-gray-300 text-lg mb-6">
-          Visit{' '}
-          <Link 
-            href="https://gateway.market" 
-            target="_blank"
-            className="text-emerald-400 hover:text-emerald-300 underline font-semibold"
-          >
-            Gateway.Market
-          </Link>
-          {' '}to take advantage of our daily bouncebacks.
+          {displayMessage}
         </p>
 
         {nextAvailable && (

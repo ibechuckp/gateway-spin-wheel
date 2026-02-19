@@ -17,6 +17,10 @@ interface CampaignData {
     id: string
     name: string
     redirectUrl: string
+    activeTitle: string | null
+    activeSubtitle: string | null
+    inactiveTitle: string | null
+    inactiveMessage: string | null
   }
   prizes: Prize[]
   schedule: {
@@ -63,7 +67,13 @@ export default function SpinPage() {
   
   // Show expired page if outside scheduled hours
   if (campaignData && !scheduleAvailable) {
-    return <ExpiredPage nextAvailable={nextAvailable} />
+    return (
+      <ExpiredPage 
+        nextAvailable={nextAvailable}
+        title={campaignData.campaign.inactiveTitle}
+        message={campaignData.campaign.inactiveMessage}
+      />
+    )
   }
   
   const verifyPhone = async (phoneNumber: string) => {
@@ -158,10 +168,10 @@ export default function SpinPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 mb-3 drop-shadow-lg">
-            🎁 SPIN TO WIN!
+            {campaignData?.campaign.activeTitle || '🎁 SPIN TO WIN!'}
           </h1>
           <p className="text-xl text-purple-200 font-medium">
-            Gateway Market Exclusive Rewards
+            {campaignData?.campaign.activeSubtitle || 'Gateway Market Exclusive Rewards'}
           </p>
         </div>
         
