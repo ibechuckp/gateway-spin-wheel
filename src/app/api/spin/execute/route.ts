@@ -12,7 +12,7 @@ function generateCouponCode(prefix = 'GATEWAY') {
 }
 
 // Weighted random selection
-function selectPrize(prizes: { id: string; weight: number; maxWins: number | null; winCount: number }[]) {
+function selectPrize(prizes: { id: string; name: string; weight: number; color: string; couponType: string; couponValue: number | null; maxWins: number | null; winCount: number }[]) {
   // Filter out prizes that have reached their max wins
   const availablePrizes = prizes.filter(p => !p.maxWins || p.winCount < p.maxWins)
   
