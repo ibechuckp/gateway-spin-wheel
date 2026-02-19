@@ -17,6 +17,9 @@ export async function GET(
         include: {
           prize: {
             select: { id: true, name: true, color: true }
+          },
+          coupon: {
+            select: { used: true, usedAt: true }
           }
         },
         orderBy: { createdAt: 'desc' },
@@ -33,8 +36,8 @@ export async function GET(
         prizeName: s.prize.name,
         prizeColor: s.prize.color,
         couponCode: s.couponCode,
-        redeemed: s.redeemed,
-        redeemedAt: s.redeemedAt,
+        redeemed: s.coupon?.used ?? false,
+        redeemedAt: s.coupon?.usedAt ?? null,
         createdAt: s.createdAt,
         ipAddress: s.ipAddress,
       })),
