@@ -14,11 +14,13 @@ model Campaign {
   active        Boolean   @default(true)
   redirectUrl   String
   expirationDate DateTime?
+  requireWhitelist Boolean @default(true)  // If true, only whitelisted phones can spin
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
   prizes        Prize[]
   spins         Spin[]
+  allowedPhones AllowedPhone[]
 }
 
 model Prize {
@@ -83,4 +85,19 @@ model RateLimit {
   windowStart DateTime @default(now())
   
   @@unique([ipAddress])
+}
+
+// Allowed phone numbers (whitelist from GoHighLevel)
+model AllowedPhone {
+  id          String   @id @default(uuid())
+  campaignId  String
+  phone       String
+  name        String?  // Optional contact name
+  addedAt     DateTime @default(now())
+  addedVia    String   @default("manual") // "manual", "csv", "webhook"
+  
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@unique([campaignId, phone])
+  @@index([phone])
 }

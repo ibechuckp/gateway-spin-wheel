@@ -39,7 +39,14 @@ export default function AdminDashboard() {
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'prizes' | 'spins' | 'games'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'prizes' | 'phones' | 'spins' | 'games'>('overview')
+  
+  // Phone whitelist
+  const [allowedPhones, setAllowedPhones] = useState<{ id: string; phone: string; name: string | null; addedVia: string; addedAt: string }[]>([])
+  const [phonesTotal, setPhonesTotal] = useState(0)
+  const [newPhone, setNewPhone] = useState('')
+  const [csvInput, setCsvInput] = useState('')
+  const [uploadingPhones, setUploadingPhones] = useState(false)
   
   // Prize editing
   const [editingPrize, setEditingPrize] = useState<Prize | null>(null)
@@ -60,8 +67,71 @@ export default function AdminDashboard() {
     if (selectedCampaign) {
       loadPrizes(selectedCampaign)
       loadStats(selectedCampaign)
+      loadPhones(selectedCampaign)
     }
   }, [selectedCampaign])
+
+  async function loadPhones(campaignId: string) {
+    try {
+      const res = await fetch(`/api/admin/campaigns/${campaignId}/phones`)
+      const data = await res.json()
+      setAllowedPhones(data.phones || [])
+      setPhonesTotal(data.total || 0)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function addSinglePhone() {
+    if (!newPhone.trim() || !selectedCampaign) return
+    try {
+      await fetch(`/api/admin/campaigns/${selectedCampaign}/phones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: newPhone })
+      })
+      setNewPhone('')
+      loadPhones(selectedCampaign)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function uploadCSV() {
+    if (!csvInput.trim() || !selectedCampaign) return
+    setUploadingPhones(true)
+    try {
+      const res = await fetch(`/api/admin/campaigns/${selectedCampaign}/phones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv: csvInput })
+      })
+      const data = await res.json()
+      alert(`Added ${data.added} phones, ${data.skipped} already existed`)
+      setCsvInput('')
+      loadPhones(selectedCampaign)
+    } catch (e) {
+      console.error(e)
+      alert('Upload failed')
+    } finally {
+      setUploadingPhones(false)
+    }
+  }
+
+  async function clearAllPhones() {
+    if (!confirm('Remove ALL whitelisted phones? This cannot be undone.')) return
+    if (!selectedCampaign) return
+    try {
+      await fetch(`/api/admin/campaigns/${selectedCampaign}/phones`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearAll: true })
+      })
+      loadPhones(selectedCampaign)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   async function loadCampaigns() {
     try {
@@ -165,7 +235,7 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <div className="border-b border-gray-800 px-6">
         <div className="flex gap-1">
-          {(['overview', 'prizes', 'spins', 'games'] as const).map(tab => (
+          {(['overview', 'prizes', 'phones', 'spins', 'games'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -177,6 +247,7 @@ export default function AdminDashboard() {
             >
               {tab === 'overview' && '📊 '}
               {tab === 'prizes' && '🎁 '}
+              {tab === 'phones' && '📱 '}
               {tab === 'spins' && '🔄 '}
               {tab === 'games' && '🎮 '}
               {tab}
@@ -335,6 +406,121 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Phones Tab */}
+        {activeTab === 'phones' && (
+          <div className="space-y-6">
+            {/* Webhook Info */}
+            <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-5">
+              <h3 className="font-semibold text-blue-400 mb-2">🔗 GoHighLevel Webhook</h3>
+              <p className="text-sm text-gray-300 mb-3">
+                Auto-register phone numbers when sending SMS from GoHighLevel:
+              </p>
+              <code className="block bg-gray-900 p-3 rounded-lg text-sm text-green-400 break-all">
+                POST {typeof window !== 'undefined' ? window.location.origin : ''}/api/webhook/gohighlevel
+              </code>
+              <p className="text-xs text-gray-400 mt-2">
+                Body: {'{'} "phone": "+1234567890", "name": "John Doe" {'}'}
+              </p>
+            </div>
+
+            {/* Add Single Phone */}
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h3 className="font-semibold mb-4">Add Phone Number</h3>
+              <div className="flex gap-3">
+                <input
+                  type="tel"
+                  value={newPhone}
+                  onChange={e => setNewPhone(e.target.value)}
+                  placeholder="+1 (555) 123-4567"
+                  className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                />
+                <button
+                  onClick={addSinglePhone}
+                  className="px-6 py-2 bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Bulk Upload CSV */}
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h3 className="font-semibold mb-2">Bulk Upload (CSV)</h3>
+              <p className="text-sm text-gray-400 mb-3">
+                Paste phone numbers, one per line. Optional: phone,name
+              </p>
+              <textarea
+                value={csvInput}
+                onChange={e => setCsvInput(e.target.value)}
+                placeholder={`+15551234567,John Doe\n+15559876543,Jane Smith\n5551112222`}
+                rows={5}
+                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg font-mono text-sm mb-3"
+              />
+              <button
+                onClick={uploadCSV}
+                disabled={uploadingPhones || !csvInput.trim()}
+                className="px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {uploadingPhones ? 'Uploading...' : 'Upload CSV'}
+              </button>
+            </div>
+
+            {/* Phone List */}
+            <div className="bg-gray-900 rounded-xl border border-gray-800">
+              <div className="px-5 py-4 border-b border-gray-800 flex justify-between items-center">
+                <h3 className="font-semibold">
+                  Whitelisted Phones ({phonesTotal})
+                </h3>
+                <button
+                  onClick={clearAllPhones}
+                  className="px-3 py-1 text-sm bg-red-600/20 text-red-400 rounded hover:bg-red-600/40"
+                >
+                  Clear All
+                </button>
+              </div>
+              
+              {allowedPhones.length === 0 ? (
+                <div className="p-8 text-center text-gray-400">
+                  No phones whitelisted yet. Add numbers above or use the webhook.
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-800/50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Phone</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Name</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Added Via</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allowedPhones.map(phone => (
+                        <tr key={phone.id} className="border-t border-gray-800">
+                          <td className="px-4 py-2 font-mono">{phone.phone}</td>
+                          <td className="px-4 py-2 text-gray-400">{phone.name || '-'}</td>
+                          <td className="px-4 py-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              phone.addedVia === 'webhook' 
+                                ? 'bg-blue-500/20 text-blue-400' 
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {phone.addedVia}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-400">
+                            {new Date(phone.addedAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

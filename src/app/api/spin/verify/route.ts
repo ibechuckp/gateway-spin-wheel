@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Normalize phone number to digits only
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, '').slice(-10) // Last 10 digits
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { phone, email } = await request.json()
@@ -24,12 +29,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ eligible: false, message: 'No active campaign' })
     }
     
+    // Check if phone is whitelisted (if campaign requires it)
+    if (campaign.requireWhitelist && phone) {
+      const normalizedPhone = normalizePhone(phone)
+      const isWhitelisted = await prisma.allowedPhone.findFirst({
+        where: {
+          campaignId: campaign.id,
+          phone: normalizedPhone
+        }
+      })
+      
+      if (!isWhitelisted) {
+        return NextResponse.json({ 
+          eligible: false, 
+          message: 'This phone number is not eligible for this promotion.' 
+        })
+      }
+    }
+    
     // Check if already spun
     const existingSpin = await prisma.spin.findFirst({
       where: {
         campaignId: campaign.id,
         OR: [
-          phone ? { phone } : {},
+          phone ? { phone: normalizePhone(phone) } : {},
           email ? { email } : {}
         ].filter(f => Object.keys(f).length > 0)
       }
