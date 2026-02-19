@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Campaign {
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique
+  active        Boolean   @default(true)
+  redirectUrl   String
+  expirationDate DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  prizes        Prize[]
+  spins         Spin[]
+}
+
+model Prize {
+  id          String   @id @default(uuid())
+  campaignId  String
+  name        String
+  weight      Int      @default(1)
+  color       String   @default("#FFD700")
+  couponType  String   // percent_off, fixed_amount, free_shipping, grand_prize
+  couponValue Float?
+  maxWins     Int?
+  winCount    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  spins       Spin[]
+  coupons     Coupon[]
+}
+
+model Spin {
+  id         String   @id @default(uuid())
+  campaignId String
+  phone      String?
+  email      String?
+  prizeId    String
+  couponCode String
+  ipAddress  String?
+  userAgent  String?
+  deviceId   String?  // For fingerprinting
+  createdAt  DateTime @default(now())
+  
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  prize      Prize    @relation(fields: [prizeId], references: [id])
+  coupon     Coupon?
+  
+  @@unique([campaignId, phone])
+  @@unique([campaignId, email])
+}
+
+model Coupon {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  prizeId   String
+  spinId    String    @unique
+  phone     String?
+  email     String?
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  
+  prize     Prize     @relation(fields: [prizeId], references: [id])
+  spin      Spin      @relation(fields: [spinId], references: [id])
+}
+
+// Rate limiting table
+model RateLimit {
+  id        String   @id @default(uuid())
+  ipAddress String
+  attempts  Int      @default(1)
+  windowStart DateTime @default(now())
+  
+  @@unique([ipAddress])
+}
