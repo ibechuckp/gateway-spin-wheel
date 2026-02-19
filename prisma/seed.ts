@@ -8,13 +8,14 @@ async function main() {
   // Create a campaign
   const campaign = await prisma.campaign.upsert({
     where: { slug: 'gateway-launch' },
-    update: {},
+    update: { requireWhitelist: true },
     create: {
       name: 'Gateway Market Launch',
       slug: 'gateway-launch',
       active: true,
       redirectUrl: 'https://gateway.market/dashboard',
       expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+      requireWhitelist: true,
     }
   })
   
