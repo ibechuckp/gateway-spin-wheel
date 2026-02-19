@@ -15,6 +15,9 @@ model Campaign {
   redirectUrl   String
   expirationDate DateTime?
   requireWhitelist Boolean @default(true)  // If true, only whitelisted phones can spin
+  scheduleStart String?   // Time of day promo starts (HH:MM, e.g. "10:00")
+  scheduleEnd   String?   // Time of day promo ends (HH:MM, e.g. "22:00") 
+  timezone      String    @default("America/New_York")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   

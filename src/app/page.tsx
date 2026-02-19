@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import SpinWheel from '@/components/SpinWheel'
+import ExpiredPage from '@/components/ExpiredPage'
 
 interface Prize {
   id: string
@@ -18,6 +19,10 @@ interface CampaignData {
     redirectUrl: string
   }
   prizes: Prize[]
+  schedule: {
+    available: boolean
+    nextAvailable: string | null
+  }
 }
 
 export default function SpinPage() {
@@ -27,6 +32,8 @@ export default function SpinPage() {
   const [loading, setLoading] = useState(false)
   const [campaignData, setCampaignData] = useState<CampaignData | null>(null)
   const [alreadySpun, setAlreadySpun] = useState(false)
+  const [scheduleAvailable, setScheduleAvailable] = useState(true)
+  const [nextAvailable, setNextAvailable] = useState<string | null>(null)
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -43,10 +50,20 @@ export default function SpinPage() {
       const data = await res.json()
       if (data.campaign) {
         setCampaignData(data)
+        // Check schedule
+        if (data.schedule) {
+          setScheduleAvailable(data.schedule.available)
+          setNextAvailable(data.schedule.nextAvailable)
+        }
       }
     } catch (e) {
       console.error('Failed to load campaign:', e)
     }
+  }
+  
+  // Show expired page if outside scheduled hours
+  if (campaignData && !scheduleAvailable) {
+    return <ExpiredPage nextAvailable={nextAvailable} />
   }
   
   const verifyPhone = async (phoneNumber: string) => {

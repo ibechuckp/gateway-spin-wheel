@@ -10,6 +10,10 @@ interface Campaign {
   active: boolean
   redirectUrl: string
   expirationDate: string | null
+  scheduleStart: string | null
+  scheduleEnd: string | null
+  timezone: string
+  requireWhitelist: boolean
   _count: { spins: number }
 }
 
@@ -39,7 +43,16 @@ export default function AdminDashboard() {
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'prizes' | 'phones' | 'spins' | 'games'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'prizes' | 'phones' | 'spins' | 'settings' | 'games'>('overview')
+  
+  // Campaign settings
+  const [campaignSettings, setCampaignSettings] = useState<{
+    scheduleStart: string
+    scheduleEnd: string
+    timezone: string
+    requireWhitelist: boolean
+  }>({ scheduleStart: '', scheduleEnd: '', timezone: 'America/New_York', requireWhitelist: true })
+  const [savingSettings, setSavingSettings] = useState(false)
   
   // Phone whitelist
   const [allowedPhones, setAllowedPhones] = useState<{ id: string; phone: string; name: string | null; addedVia: string; addedAt: string }[]>([])
@@ -84,8 +97,9 @@ export default function AdminDashboard() {
       loadStats(selectedCampaign)
       loadPhones(selectedCampaign)
       loadSpins(selectedCampaign)
+      loadCampaignSettings(selectedCampaign)
     }
-  }, [selectedCampaign])
+  }, [selectedCampaign, campaigns])
 
   async function loadPhones(campaignId: string) {
     try {
@@ -223,6 +237,42 @@ export default function AdminDashboard() {
     }
   }
 
+  async function loadCampaignSettings(campaignId: string) {
+    const campaign = campaigns.find(c => c.id === campaignId)
+    if (campaign) {
+      setCampaignSettings({
+        scheduleStart: campaign.scheduleStart || '',
+        scheduleEnd: campaign.scheduleEnd || '',
+        timezone: campaign.timezone || 'America/New_York',
+        requireWhitelist: campaign.requireWhitelist ?? true
+      })
+    }
+  }
+
+  async function saveCampaignSettings() {
+    if (!selectedCampaign) return
+    setSavingSettings(true)
+    try {
+      await fetch(`/api/admin/campaigns/${selectedCampaign}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scheduleStart: campaignSettings.scheduleStart || null,
+          scheduleEnd: campaignSettings.scheduleEnd || null,
+          timezone: campaignSettings.timezone,
+          requireWhitelist: campaignSettings.requireWhitelist
+        })
+      })
+      await loadCampaigns()
+      alert('Settings saved!')
+    } catch (e) {
+      console.error(e)
+      alert('Failed to save settings')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
   async function updatePrize(prize: Prize) {
     try {
       await fetch(`/api/admin/prizes/${prize.id}`, {
@@ -290,7 +340,7 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <div className="border-b border-gray-800 px-6">
         <div className="flex gap-1">
-          {(['overview', 'prizes', 'phones', 'spins', 'games'] as const).map(tab => (
+          {(['overview', 'prizes', 'phones', 'spins', 'settings', 'games'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -304,6 +354,7 @@ export default function AdminDashboard() {
               {tab === 'prizes' && '🎁 '}
               {tab === 'phones' && '📱 '}
               {tab === 'spins' && '🔄 '}
+              {tab === 'settings' && '⚙️ '}
               {tab === 'games' && '🎮 '}
               {tab}
             </button>
@@ -743,6 +794,86 @@ export default function AdminDashboard() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            {/* Schedule Settings */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h3 className="font-semibold text-lg mb-4">⏰ Availability Schedule</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Set the hours when the spin wheel is available. Outside these hours, users will see an &quot;expired&quot; page.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={campaignSettings.scheduleStart}
+                    onChange={e => setCampaignSettings({ ...campaignSettings, scheduleStart: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={campaignSettings.scheduleEnd}
+                    onChange={e => setCampaignSettings({ ...campaignSettings, scheduleEnd: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-1">Timezone</label>
+                <select
+                  value={campaignSettings.timezone}
+                  onChange={e => setCampaignSettings({ ...campaignSettings, timezone: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                >
+                  <option value="America/New_York">Eastern (New York)</option>
+                  <option value="America/Chicago">Central (Chicago)</option>
+                  <option value="America/Denver">Mountain (Denver)</option>
+                  <option value="America/Los_Angeles">Pacific (Los Angeles)</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+              
+              <p className="text-xs text-gray-500 mb-4">
+                Leave both times empty to make the wheel available 24/7.
+              </p>
+            </div>
+
+            {/* Whitelist Settings */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h3 className="font-semibold text-lg mb-4">📱 Phone Whitelist</h3>
+              
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={campaignSettings.requireWhitelist}
+                  onChange={e => setCampaignSettings({ ...campaignSettings, requireWhitelist: e.target.checked })}
+                  className="w-5 h-5 rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                />
+                <div>
+                  <span className="font-medium">Require Phone Whitelist</span>
+                  <p className="text-sm text-gray-400">Only whitelisted phone numbers can spin the wheel</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={saveCampaignSettings}
+              disabled={savingSettings}
+              className="w-full py-3 bg-emerald-600 rounded-lg hover:bg-emerald-700 font-semibold disabled:opacity-50"
+            >
+              {savingSettings ? 'Saving...' : 'Save Settings'}
+            </button>
           </div>
         )}
 

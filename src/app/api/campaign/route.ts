@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isWithinSchedule } from '@/lib/schedule'
 
 export async function GET() {
   try {
@@ -24,6 +25,13 @@ export async function GET() {
       return NextResponse.json({ error: 'No active campaign' }, { status: 404 })
     }
     
+    // Check if we're within scheduled hours
+    const schedule = isWithinSchedule(
+      campaign.scheduleStart,
+      campaign.scheduleEnd,
+      campaign.timezone
+    )
+    
     return NextResponse.json({
       campaign: {
         id: campaign.id,
@@ -36,7 +44,11 @@ export async function GET() {
         color: p.color,
         couponType: p.couponType,
         couponValue: p.couponValue
-      }))
+      })),
+      schedule: {
+        available: schedule.available,
+        nextAvailable: schedule.nextAvailable
+      }
     })
   } catch (error) {
     console.error('Campaign fetch error:', error)
