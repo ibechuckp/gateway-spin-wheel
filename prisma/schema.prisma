@@ -34,6 +34,7 @@ model Prize {
   color       String   @default("#FFD700")
   couponType  String   // percent_off, fixed_amount, free_shipping, grand_prize
   couponValue Float?
+  couponCode  String?  // Custom coupon code for this prize (if set, used instead of auto-generated)
   maxWins     Int?
   winCount    Int      @default(0)
   active      Boolean  @default(true)

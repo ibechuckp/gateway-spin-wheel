@@ -24,6 +24,7 @@ interface Prize {
   color: string
   couponType: string
   couponValue: number | null
+  couponCode: string | null
   maxWins: number | null
   winCount: number
   active: boolean
@@ -469,6 +470,17 @@ export default function AdminDashboard() {
                           className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
                         />
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Coupon Code</label>
+                      <input
+                        type="text"
+                        value={editingPrize.couponCode || ''}
+                        onChange={e => setEditingPrize({ ...editingPrize, couponCode: e.target.value || null })}
+                        placeholder="e.g. SAVE20 (blank = auto-generate)"
+                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg font-mono"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Everyone who wins this prize gets this exact code</p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Max Wins (blank = unlimited)</label>

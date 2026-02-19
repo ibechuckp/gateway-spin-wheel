@@ -12,7 +12,7 @@ function generateCouponCode(prefix = 'GATEWAY') {
 }
 
 // Weighted random selection
-function selectPrize(prizes: { id: string; name: string; weight: number; color: string; couponType: string; couponValue: number | null; maxWins: number | null; winCount: number }[]) {
+function selectPrize(prizes: { id: string; name: string; weight: number; color: string; couponType: string; couponValue: number | null; couponCode: string | null; maxWins: number | null; winCount: number }[]) {
   // Filter out prizes that have reached their max wins
   const availablePrizes = prizes.filter(p => !p.maxWins || p.winCount < p.maxWins)
   
@@ -81,15 +81,21 @@ export async function POST(request: NextRequest) {
     const selectedPrize = selectPrize(campaign.prizes)
     const prizeIndex = campaign.prizes.findIndex(p => p.id === selectedPrize.id)
     
-    // Generate unique coupon code
+    // Use prize's coupon code if set, otherwise generate unique one
     let couponCode: string
-    let attempts = 0
-    do {
-      couponCode = generateCouponCode()
-      const existing = await prisma.coupon.findUnique({ where: { code: couponCode } })
-      if (!existing) break
-      attempts++
-    } while (attempts < 10)
+    if (selectedPrize.couponCode) {
+      // Use the fixed coupon code from the prize
+      couponCode = selectedPrize.couponCode
+    } else {
+      // Generate unique coupon code
+      let attempts = 0
+      do {
+        couponCode = generateCouponCode()
+        const existing = await prisma.coupon.findUnique({ where: { code: couponCode } })
+        if (!existing) break
+        attempts++
+      } while (attempts < 10)
+    }
     
     // Get request metadata
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
@@ -110,17 +116,21 @@ export async function POST(request: NextRequest) {
         }
       })
       
-      // Create coupon
-      const coupon = await tx.coupon.create({
-        data: {
-          code: couponCode,
-          prizeId: selectedPrize.id,
-          spinId: spin.id,
-          phone: phone || null,
-          email: email || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        }
-      })
+      // Only create Coupon record if using auto-generated code (not fixed prize code)
+      // Fixed prize codes are shared by all winners, so we just store on spin record
+      let coupon = null
+      if (!selectedPrize.couponCode) {
+        coupon = await tx.coupon.create({
+          data: {
+            code: couponCode,
+            prizeId: selectedPrize.id,
+            spinId: spin.id,
+            phone: phone || null,
+            email: email || null,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          }
+        })
+      }
       
       // Increment prize win count
       await tx.prize.update({
@@ -141,8 +151,8 @@ export async function POST(request: NextRequest) {
         couponValue: selectedPrize.couponValue,
       },
       coupon: {
-        code: result.coupon.code,
-        expiresAt: result.coupon.expiresAt,
+        code: couponCode,
+        expiresAt: result.coupon?.expiresAt || null, // No expiry for fixed prize codes
       },
       redirectUrl: campaign.redirectUrl,
     })
