@@ -28,17 +28,12 @@ export default function SpinPage() {
   const [campaignData, setCampaignData] = useState<CampaignData | null>(null)
   const [alreadySpun, setAlreadySpun] = useState(false)
   
-  // Get phone from URL params on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const phoneParam = params.get('phone')
     if (phoneParam) {
       setPhone(phoneParam)
-      // Auto-verify if phone is in URL
-      verifyPhone(phoneParam)
     }
-    
-    // Load campaign data
     loadCampaign()
   }, [])
   
@@ -71,8 +66,10 @@ export default function SpinPage() {
         setVerified(true)
         setPhone(phoneNumber)
       } else {
-        setError(data.message || 'You have already used your spin!')
-        setAlreadySpun(true)
+        if (data.message?.includes('already')) {
+          setAlreadySpun(true)
+        }
+        setError(data.message || 'Unable to verify')
       }
     } catch (e) {
       setError('Failed to verify. Please try again.')
@@ -116,79 +113,137 @@ export default function SpinPage() {
   }
   
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex flex-col items-center justify-center p-4">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-          🎁 Spin to Win!
-        </h1>
-        <p className="text-gray-300 text-lg">
-          Gateway Market Exclusive Rewards
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+      </div>
+      
+      {/* Stars */}
+      <div className="absolute inset-0">
+        {[...Array(50)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              opacity: Math.random() * 0.7 + 0.3
+            }}
+          />
+        ))}
+      </div>
+      
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 mb-3 drop-shadow-lg">
+            🎁 SPIN TO WIN!
+          </h1>
+          <p className="text-xl text-purple-200 font-medium">
+            Gateway Market Exclusive Rewards
+          </p>
+        </div>
+        
+        {!verified && !alreadySpun ? (
+          // Phone Entry Form
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full border border-white/20 shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-2 text-center">
+              Enter Your Phone Number
+            </h2>
+            <p className="text-purple-200 text-sm mb-6 text-center">
+              We'll save your prize to this number
+            </p>
+            
+            <div className="relative mb-4">
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                placeholder="(555) 123-4567"
+                className="w-full px-5 py-4 rounded-xl bg-white/10 border-2 border-white/20 text-white text-lg placeholder-purple-300/50 focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 transition-all"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl">📱</span>
+            </div>
+            
+            {error && (
+              <p className="text-red-400 text-sm mb-4 text-center bg-red-500/10 p-3 rounded-lg">{error}</p>
+            )}
+            
+            <button
+              onClick={handleVerify}
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 rounded-xl text-gray-900 font-bold text-xl transition-all disabled:opacity-50 shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50"
+            >
+              {loading ? '⏳ Verifying...' : '🎰 Let Me Spin!'}
+            </button>
+          </div>
+        ) : alreadySpun ? (
+          // Already Spun Message
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full text-center border border-white/20 shadow-2xl">
+            <div className="text-7xl mb-4">🎫</div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Already Played!
+            </h2>
+            <p className="text-purple-200 mb-6">
+              You've already spun the wheel. Check your messages for your coupon code!
+            </p>
+            <a
+              href="https://gateway.market/dashboard"
+              className="inline-block px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 rounded-xl text-gray-900 font-bold text-lg transition-all shadow-lg"
+            >
+              🛒 Shop Now →
+            </a>
+          </div>
+        ) : campaignData ? (
+          // Spin Wheel
+          <SpinWheel
+            prizes={campaignData.prizes}
+            onSpin={handleSpin}
+          />
+        ) : (
+          // Loading
+          <div className="text-white text-xl flex items-center gap-3">
+            <div className="w-8 h-8 border-4 border-white/30 border-t-yellow-500 rounded-full animate-spin" />
+            Loading...
+          </div>
+        )}
+        
+        {/* Footer */}
+        <p className="text-purple-300/50 text-sm mt-8">
+          One spin per customer • Prizes while supplies last
         </p>
       </div>
       
-      {!verified && !alreadySpun ? (
-        // Phone Verification Form
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-white mb-4 text-center">
-            Enter Your Phone Number
-          </h2>
-          <p className="text-gray-300 text-sm mb-6 text-center">
-            Verify your phone to spin the wheel
-          </p>
-          
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 (555) 123-4567"
-            className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-400 mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          />
-          
-          {error && (
-            <p className="text-red-400 text-sm mb-4 text-center">{error}</p>
-          )}
-          
-          <button
-            onClick={handleVerify}
-            disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 rounded-lg text-gray-900 font-bold text-lg transition disabled:opacity-50"
-          >
-            {loading ? 'Verifying...' : 'Continue'}
-          </button>
-        </div>
-      ) : alreadySpun ? (
-        // Already Spun Message
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full text-center">
-          <div className="text-6xl mb-4">😅</div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Already Played!
-          </h2>
-          <p className="text-gray-300 mb-6">
-            You've already used your spin. Check your messages for your coupon code!
-          </p>
-          <a
-            href="https://gateway.market/dashboard"
-            className="inline-block px-6 py-3 bg-yellow-500 hover:bg-yellow-400 rounded-lg text-gray-900 font-bold transition"
-          >
-            Shop Now →
-          </a>
-        </div>
-      ) : campaignData ? (
-        // Spin Wheel
-        <SpinWheel
-          prizes={campaignData.prizes}
-          onSpin={handleSpin}
-        />
-      ) : (
-        // Loading
-        <div className="text-white text-xl">Loading...</div>
-      )}
-      
-      {/* Footer */}
-      <p className="text-gray-500 text-sm mt-8">
-        One spin per customer. Terms apply.
-      </p>
+      {/* CSS animations */}
+      <style jsx>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(20px, -30px) scale(1.1); }
+          50% { transform: translate(-20px, 20px) scale(0.9); }
+          75% { transform: translate(30px, 10px) scale(1.05); }
+        }
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.5); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        .animate-twinkle {
+          animation: twinkle 3s infinite;
+        }
+      `}</style>
     </main>
   )
 }
